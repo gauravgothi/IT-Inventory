@@ -16,11 +16,16 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-from itinventory import views
+from . import views
+
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', views.home),
-    path('user/',include('users.urls')),
-    path('utility/',include('utility.urls'))
+    path('login/',views.LoginView.as_view(), name='login'),
+    path('get_user/<str:username>',views.get_user, name='get_user'),
+    path('add_user/',views.add_user, name='add_user'),
+    path('update_user/<int:user_id>/', views.update_user, name='update_user'),
+    path('deactivate_user/<int:user_id>/', views.deactivate_user, name='deactivate_user'),
+    
+    path('home/', views.home, name='home'),  # Add this line if you have a home view
+    path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),  # Add this line if you have an admin dashboard view
 ]
