@@ -96,7 +96,9 @@ def update_user(request, user_id):
         user.enabled = data.get('enabled', user.enabled)
         user.email = data.get('email', user.email)
         user.mobile_no = data.get('mobile_no', user.mobile_no)
-        user.updated_by = data.get('updated_by', user.updated_by)
+
+        user.updated_by = request.user.username
+        user.updated_on = datetime.now()
 
         if 'password' in data:
             user.set_password(data.get('password'))

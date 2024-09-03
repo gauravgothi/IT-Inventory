@@ -27,7 +27,11 @@ SECRET_KEY = 'django-insecure-ui#5*fjd2i38bt*26et5czxt@+fkvxyrg+u#r+kqa^vnu+jrh4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '10.98.7.218',  # Add your IP address here
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -42,6 +46,12 @@ REST_FRAMEWORK = {
 INSTALLED_APPS = [
     'users',
     'utility',
+    'equipments',
+    'assignments',
+    'assignees',
+    'orders',
+    'corsheaders',
+    'restorations',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -51,6 +61,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -59,6 +70,32 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+# CORS_ALLOWED_ORIGINS = [
+#     "http://10.98.4.135:4200", # If you are running a local React or Angular app
+# ]
+
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "DELETE",
+    "OPTIONS",
+]
+
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "content-type",
+    "accept",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'itinventory.urls'
 
@@ -125,8 +162,8 @@ SIMPLE_JWT = {
     'SIGNING_KEY': SECRET_KEY,                        # Make sure SECRET_KEY is defined in your settings
     'VERIFYING_KEY': None,                           # Optionally, you can provide a public key for token verification
     'AUTH_HEADER_TYPES': ('Bearer',),                # Specifies the type of authentication header
-    'USER_ID_FIELD': 'id',                           # Field to use for user identification in the token
-    'USER_ID_CLAIM': 'user_id',                      # Claim to use for user identification in the token
+    'USER_ID_FIELD': 'username',                           # Field to use for user identification in the token
+    'USER_ID_CLAIM': 'username',                      # Claim to use for user identification in the token
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
 }

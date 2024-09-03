@@ -34,6 +34,12 @@ class LoginSerializer(serializers.Serializer):
 
     def get_token(self, user):
         refresh = RefreshToken.for_user(user)
+
+        # Adding custom fields to the token
+        refresh['username'] = user.username
+        refresh['email'] = user.email
+        refresh['role'] = user.role
+        refresh['mobile_no'] = user.mobile_no
         return {
             'refresh': str(refresh),
             'access': str(refresh.access_token),

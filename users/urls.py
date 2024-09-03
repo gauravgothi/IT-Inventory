@@ -25,7 +25,6 @@ urlpatterns = [
     path('add_user/',views.add_user, name='add_user'),
     path('update_user/<int:user_id>/', views.update_user, name='update_user'),
     path('deactivate_user/<int:user_id>/', views.deactivate_user, name='deactivate_user'),
-    
     path('home/', views.home, name='home'),  # Add this line if you have a home view
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),  # Add this line if you have an admin dashboard view
 ]
