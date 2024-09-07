@@ -1,11 +1,13 @@
 from datetime import timezone
 from django.db import models
+from django.forms import ValidationError
 
 from assignees.models import Assignee
 from miscellaneous.models import Condition
 from equipments.models import Equipment
 
 class Assignment(models.Model):
+    @staticmethod
     def get_condition_choices():
         return [(condition.condition_values, condition.condition_values) for condition in Condition.get_condition_values()]
         #return Condition.get_condition_values()
@@ -17,8 +19,8 @@ class Assignment(models.Model):
     assigned_date = models.DateTimeField(null=False)
     letter_for_issue = models.CharField(max_length=200,null=True,blank=True)
     return_date = models.DateTimeField(null=True)
-    assigned_condition = models.CharField(max_length=20,default="NEW & WORKING",choices=get_condition_choices)
-    returned_condition = models.CharField(max_length=20,default="OLD & WORKING",choices=get_condition_choices)
+    assigned_condition = models.CharField(max_length=20,default=None,choices=get_condition_choices,null=True)
+    returned_condition = models.CharField(max_length=20,default=None,choices=get_condition_choices,null=True)
     letter_for_return = models.CharField(max_length=200,null=True,blank=True)
     notes = models.TextField(blank=True, null=True)
     created_by = models.CharField(max_length=100)

@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from assignments.models import Assignment
 from equipments.models import Equipment
 from equipments.serializers import EquipmentSerializer
+from miscellaneous.models import Condition, Status
 from orders.models import Order
 from users.models import User
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -15,6 +16,8 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+
+from utility.models import CustomError
 
 indian_time = timezone(timedelta(hours=5, minutes=30))
 
@@ -28,6 +31,20 @@ def admin_required(view_func):
         return view_func(request, *args, **kwargs)
     return _wrapped_view
 
+def json_validation(data):
+    status=data.get('status')
+    condition = data.get('condition')
+
+    valid_status = [status.status_values for status in Status.objects.all()]
+    valid_conditions = [condition.condition_values for condition in Condition.objects.all()]
+
+    if status not in valid_status:
+        raise CustomError("Item Status is not valid")
+    elif condition not in valid_conditions:
+        raise CustomError("Item Condition is not valid")
+    
+
+
 @csrf_exempt
 @api_view(["POST"])
 @admin_required
@@ -36,6 +53,7 @@ def admin_required(view_func):
 def create_equipment(request):
     try:
         data = json.loads(request.body)
+        json_validation(data)
         equipment = Equipment(
             category=data.get('category'),
             sub_category=data.get('sub_category'),
@@ -48,6 +66,7 @@ def create_equipment(request):
 
             warranty_expiration=data.get('warranty_expiration'),
             status=data.get('status'),
+            condition = data.get('condition'),
             location=data.get('location'),
             assigned_to=data.get('assigned_to'),
             notes=data.get('notes'),
@@ -58,6 +77,8 @@ def create_equipment(request):
         equipment.save()
 
         return JsonResponse({'status': 'success', 'message': f'Equipment {equipment.serial_number} added successfully.'}, status=201)
+    except CustomError as e:
+        return JsonResponse({'status' : 'error', 'message' : str(e)}, status=400)
     except IntegrityError as e:
         if 'unique constraint' in str(e):
             return JsonResponse({'status': 'error', 'message': f'Equipment Serial number {equipment.serial_number} must be unique.'}, status=400)
@@ -80,6 +101,7 @@ def create_equipment_list(request):
 
         with transaction.atomic():  # Start an atomic transaction block
             for data in data_list:
+                json_validation(data)
                 Equipment.objects.create(
                     category=data.get('category'),
                     sub_category=data.get('sub_category'),
@@ -91,6 +113,7 @@ def create_equipment_list(request):
                     receipt_date=data.get('receipt_date'),
                     warranty_expiration=data.get('warranty_expiration'),
                     status=data.get('status'),
+                    condition = data.get('condition'),
                     location=data.get('location'),
                     assigned_to=data.get('assigned_to'),
                     notes=data.get('notes'),
@@ -100,6 +123,8 @@ def create_equipment_list(request):
 
         return JsonResponse({'status': 'success', 'message': 'All equipment added successfully.'}, status=201)
 
+    except CustomError as e:
+        return JsonResponse({'status' : 'error', 'message' : str(e)}, status=400)
     except IntegrityError as e:
         # This catches any IntegrityError such as a unique constraint violation during the transaction
         return JsonResponse({'status': 'error', 'message': 'Transaction failed. ' + str(e)}, status=400)
@@ -115,6 +140,7 @@ def create_equipment_list(request):
 def update_equipment(request, equipment_id):
     try:
         data = json.loads(request.body)
+        json_validation(data)
         equipment = Equipment.objects.get(id=equipment_id)
 
         equipment.category = data.get('category', equipment.category)
@@ -129,8 +155,9 @@ def update_equipment(request, equipment_id):
         equipment.receipt_date = data.get('receipt_date',equipment.receipt_date)
         equipment.warranty_expiration = data.get('warranty_expiration',equipment.warranty_expiration)
         equipment.status = data.get('status',equipment.status)
+        equipment.condition = data.get('condition',equipment.condition)
         equipment.location = data.get('location',equipment.location)
-        equipment.assigned_to = data.get('assigned_to',equipment.assigned_to)
+        equipment.assignment_id = data.get('assigned_to',equipment.assignment_id)
         equipment.notes = data.get('status',equipment.notes)
 
         equipment.updated_by = request.user.username
@@ -139,6 +166,8 @@ def update_equipment(request, equipment_id):
         equipment.save()
 
         return JsonResponse({'status': 'success', 'message': f'Equipment {equipment.serial_number} updated successfully.'}, status=200)
+    except CustomError as e:
+        return JsonResponse({'status' : 'error', 'message' : str(e)}, status=400)
     except IntegrityError as e:
         if 'unique constraint' in str(e):
             return JsonResponse({'status': 'error', 'message': f'Equipment Serial number {equipment.serial_number} must be unique.'}, status=400)
