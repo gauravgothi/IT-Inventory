@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 import json
 from django.db import IntegrityError
@@ -11,6 +11,8 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+
+indian_time = timezone(timedelta(hours=5, minutes=30))
 
 def admin_required(view_func):
     @wraps(view_func)
@@ -32,7 +34,7 @@ def admin_required(view_func):
 def create_order(request):
     try:
         data = json.loads(request.body)
-        order = Order.objects.create(
+        order = Order(
             po_number = data.get('po_number'),
             po_type = data.get('po_type'),
             project_id = data.get('project_id'),
@@ -42,14 +44,14 @@ def create_order(request):
             purchase_date=data.get('purchaset_date'),
             
             created_by=request.user.username,
-            created_on=datetime.now()
+            created_on=datetime.now(tz=indian_time)
         )
         order.save()
 
-        return JsonResponse({'status': 'success', 'message': 'Order {order.po_number} added successfully.'}, status=201)
+        return JsonResponse({'status': 'success', 'message': f'Order {order.po_number} added successfully.'}, status=201)
     except IntegrityError as e:
         if 'unique constraint' in str(e):
-            return JsonResponse({'status': 'error', 'message': 'Order number {order.po_number} must be unique.'}, status=400)
+            return JsonResponse({'status': 'error', 'message': f'Order number {order.po_number} must be unique.'}, status=400)
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     except KeyError as e:
         return JsonResponse({'status': 'error', 'message': f'Missing field: {e.args[0]}'}, status=400)
@@ -74,14 +76,14 @@ def update_order(request, order_id):
         order.purchase_date=data.get('purchaset_date'),
 
         order.updated_by = request.user.username
-        order.updated_on = datetime.now()
+        order.updated_on = datetime.now(tz=indian_time)
 
         order.save()
 
-        return JsonResponse({'status': 'success', 'message': 'Order {order.order_number} updated successfully.'}, status=200)
+        return JsonResponse({'status': 'success', 'message': f'Order {order.po_number} updated successfully.'}, status=200)
     except IntegrityError as e:
         if 'unique constraint' in str(e):
-            return JsonResponse({'status': 'error', 'message': 'Order number {order.order_number} must be unique.'}, status=400)
+            return JsonResponse({'status': 'error', 'message': f'Order number {order.po_number} must be unique.'}, status=400)
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     except Order.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Equipment not found.'}, status=404)

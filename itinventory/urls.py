@@ -25,5 +25,8 @@ urlpatterns = [
     path('equipment/',include('equipments.urls')),
     path('order/',include('orders.urls')),
     path('assignment/',include('assignments.urls')),
+    path('assignee/',include('assignees.urls')),
     path('utility/',include('utility.urls')),
+    path('restoration/',include('restorations.urls')),
+    path('misc/',include('miscellaneous.urls')),
 ]

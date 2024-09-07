@@ -1,9 +1,22 @@
-from django.shortcuts import render
+from datetime import datetime
+import os
+from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
+from django.http import FileResponse, Http404
 from .models import Document, Spreadsheet
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
+
+
+def get_file_response(file_path):
+    if not os.path.exists(file_path):
+        raise Http404("File does not exist")
+    file = open(file_path, 'rb')
+    response = FileResponse(file)
+    response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+    return response
+
 
 # View to handle PDF and JPG file uploads
 @authentication_classes([TokenAuthentication])  # or JWTAuthentication
@@ -19,6 +32,41 @@ def upload_document(request):
             return JsonResponse({'status': 'error', 'message': 'Invalid file type. Only PDF and JPG files are allowed.'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
 
+def upload_document2(file,asignee_type,asignee_id):
+    try:
+        if file:
+        # Ensure the file is either PDF or JPG
+            if file.name.endswith('.pdf') or file.name.endswith('.jpg'):
+                # Create the filename in the format location_id_datetime.extension
+                extension = os.path.splitext(file.name)[1]
+                datetime_str = datetime.now().strftime('%Y%m%d%H%M%S')
+                filename = f'{asignee_type}_{asignee_id}_{datetime_str}{extension}'
+                folder_path = "C:/Inventory/"
+
+                # Ensure the folder exists
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+
+                # Define the full file path
+                file_path = os.path.join(folder_path, filename)
+
+                # Save the file manually
+                with open(file_path, 'wb+') as destination:
+                    for chunk in file.chunks():
+                        destination.write(chunk)
+                        destination.close()
+
+                # Save the file reference to the database (optional)
+                # document = Document(file=file)
+                # document.save()
+
+                return file_path
+            else:
+                return ''
+        return ''
+    except BaseException as e:
+            return e
+
 # View to handle Excel, XLS, and CSV file uploads
 @authentication_classes([TokenAuthentication])  # or JWTAuthentication
 @permission_classes([IsAuthenticated])
@@ -32,4 +80,20 @@ def upload_spreadsheet(request):
         else:
             return JsonResponse({'status': 'error', 'message': 'Invalid file type. Only Excel, XLS, and CSV files are allowed.'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+
+@csrf_exempt
+@api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+def download_file(request):
+    file_path = request.GET.get('file_path') 
+    if file_path:
+        try:
+            return get_file_response(file_path)
+        except Http404 as e:
+            return JsonResponse({'error': str(e)}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': 'An error occurred while processing the file'}, status=500)
+    else:
+        return JsonResponse({'error': 'No file path provided'}, status=400)
+
 

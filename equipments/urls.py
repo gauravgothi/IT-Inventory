@@ -20,8 +20,11 @@ from . import views
 urlpatterns = [
     path('create_equipment/',views.create_equipment, name='create_equipment'),
     path('create_equipment_list/',views.create_equipment_list, name='create_equipment_list'),
-    path('update_equipment/',views.update_equipment, name='update_equipment'),
+    path('update_equipment/<int:equipment_id>/',views.update_equipment, name='update_equipment_by_id'),
     path('delete_equipment/',views.delete_equipment, name='delete_equipment'),
     path('get_equipment_list/<int:equipment_id>/',views.get_equipment_list, name='get_equipment_list_by_id'),
     path('get_equipment_list/',views.get_equipment_list, name='get_equipment_list_by_filter'),
+    path('get_equipment_list_with_serializer/<int:equipment_id>/',views.get_equipment_list_with_serializer, name='get_equipment_list_with_serializer_by_id'),
+    path('get_equipment_list_with_serializer/',views.get_equipment_list_with_serializer, name='get_equipment_list_with_serializer_by_filter'),
+
 ]

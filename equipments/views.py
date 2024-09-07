@@ -1,17 +1,22 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 import json
 from django.db import IntegrityError,transaction
 from django.http import JsonResponse
 from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
+from assignments.models import Assignment
 from equipments.models import Equipment
+from equipments.serializers import EquipmentSerializer
+from orders.models import Order
 from users.models import User
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 # from rest_framework.authentication import TokenAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+
+indian_time = timezone(timedelta(hours=5, minutes=30))
 
 def admin_required(view_func):
     @wraps(view_func)
@@ -31,7 +36,7 @@ def admin_required(view_func):
 def create_equipment(request):
     try:
         data = json.loads(request.body)
-        equipment = Equipment.objects.create(
+        equipment = Equipment(
             category=data.get('category'),
             sub_category=data.get('sub_category'),
             name=data.get('name'),
@@ -48,14 +53,14 @@ def create_equipment(request):
             notes=data.get('notes'),
             
             created_by=request.user.username,
-            created_on=datetime.now()
+            created_on=datetime.now(tz=indian_time)
         )
         equipment.save()
 
-        return JsonResponse({'status': 'success', 'message': 'Equipment {equipment.serial_number} added successfully.'}, status=201)
+        return JsonResponse({'status': 'success', 'message': f'Equipment {equipment.serial_number} added successfully.'}, status=201)
     except IntegrityError as e:
         if 'unique constraint' in str(e):
-            return JsonResponse({'status': 'error', 'message': 'Equipment Serial number {equipment.serial_number} must be unique.'}, status=400)
+            return JsonResponse({'status': 'error', 'message': f'Equipment Serial number {equipment.serial_number} must be unique.'}, status=400)
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     except KeyError as e:
         return JsonResponse({'status': 'error', 'message': f'Missing field: {e.args[0]}'}, status=400)
@@ -82,7 +87,7 @@ def create_equipment_list(request):
                     make=data.get('make'),
                     model=data.get('model'),
                     serial_number=data.get('serial_number'),
-                    order=data.get('order_id'),
+                    order=Order.objects.get(id=data.get('order_id')),
                     receipt_date=data.get('receipt_date'),
                     warranty_expiration=data.get('warranty_expiration'),
                     status=data.get('status'),
@@ -90,7 +95,7 @@ def create_equipment_list(request):
                     assigned_to=data.get('assigned_to'),
                     notes=data.get('notes'),
                     created_by=request.user.username,
-                    created_on=datetime.now()
+                    created_on=datetime.now(tz=indian_time)
                 )
 
         return JsonResponse({'status': 'success', 'message': 'All equipment added successfully.'}, status=201)
@@ -119,7 +124,8 @@ def update_equipment(request, equipment_id):
         equipment.model = data.get('model', equipment.model)
         equipment.serial_number = data.get('serial_number', equipment.serial_number)
 
-        equipment.order = data.get('order', equipment.order)
+        equipment.order = Order.objects.get(id= data.get('order_id'))
+
         equipment.receipt_date = data.get('receipt_date',equipment.receipt_date)
         equipment.warranty_expiration = data.get('warranty_expiration',equipment.warranty_expiration)
         equipment.status = data.get('status',equipment.status)
@@ -128,14 +134,14 @@ def update_equipment(request, equipment_id):
         equipment.notes = data.get('status',equipment.notes)
 
         equipment.updated_by = request.user.username
-        equipment.updated_on = datetime.now()
+        equipment.updated_on = datetime.now(tz=indian_time)
 
         equipment.save()
 
-        return JsonResponse({'status': 'success', 'message': 'Equipment {equipment.serial_number} updated successfully.'}, status=200)
+        return JsonResponse({'status': 'success', 'message': f'Equipment {equipment.serial_number} updated successfully.'}, status=200)
     except IntegrityError as e:
         if 'unique constraint' in str(e):
-            return JsonResponse({'status': 'error', 'message': 'Equipment Serial number {equipment.serial_number} must be unique.'}, status=400)
+            return JsonResponse({'status': 'error', 'message': f'Equipment Serial number {equipment.serial_number} must be unique.'}, status=400)
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     except Equipment.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Equipment not found.'}, status=404)
@@ -151,9 +157,9 @@ def delete_equipment(request, equipment_id):
         equipment = Equipment.objects.get(id=equipment_id)
         equipment.delete()
 
-        return JsonResponse({'status': 'success', 'message': 'Equipment {equipment.serial_number} deleted successfully.'}, status=200)
+        return JsonResponse({'status': 'success', 'message': f'Equipment {equipment.serial_number} deleted successfully.'}, status=200)
     except User.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Equipment {equipment.serial_number} not found.'}, status=404)
+        return JsonResponse({'status': 'error', 'message': f'Equipment {equipment.serial_number} not found.'}, status=404)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
@@ -185,6 +191,42 @@ def get_equipment_list(request, equipment_id=None):
 
         if equipment_list.exists():
             equipment_data = list(equipment_list.values())
+            return JsonResponse(equipment_data, status=status.HTTP_200_OK, safe=False)
+        else:
+            return JsonResponse({'error': 'No equipment found matching the criteria'}, status=status.HTTP_404_NOT_FOUND)
+    except Equipment.DoesNotExist:
+        return JsonResponse({'error': 'Equipment not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_equipment_list_with_serializer(request, equipment_id=None):
+    try:
+        # Get optional filter parameters from the request
+        serial_number = request.GET.get('serial_number')
+        order = request.GET.get('order')
+        purchase_date = request.GET.get('purchase_date')
+        
+        # Build the query using Q objects for optional filtering
+        filters = Q()
+        if serial_number:
+            filters &= Q(serial_number=serial_number)
+        if order:
+            filters &= Q(order=order)
+        if purchase_date:
+            filters &= Q(purchase_date=purchase_date)
+        
+        if equipment_id:
+            filters &= Q(id=equipment_id)
+
+        # Query the Equipment model with the constructed filters
+        equipment_list = Equipment.objects.filter(filters)
+        serializer = EquipmentSerializer(equipment_list,many = True)
+        if equipment_list.exists():
+            equipment_data = serializer.data
             return JsonResponse(equipment_data, status=status.HTTP_200_OK, safe=False)
         else:
             return JsonResponse({'error': 'No equipment found matching the criteria'}, status=status.HTTP_404_NOT_FOUND)

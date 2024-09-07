@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 import json
 from django.db import IntegrityError,transaction
@@ -14,6 +14,8 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+
+indian_time = timezone(timedelta(hours=5, minutes=30))
 
 def admin_required(view_func):
     @wraps(view_func)
@@ -34,8 +36,8 @@ def admin_required(view_func):
 def create_restoration(request):
     try:
         data = json.loads(request.body)
-        restoration = Restoration.objects.create(
-            equipment = data.get('equipment_id'),
+        restoration = Restoration(
+            equipment = Equipment.objects.get(id = data.get('equipment_id')),
             restoration_date = data.get('restoration_date'),
             performed_by = data.get('performed_by'),
             description = data.get('description'),
@@ -47,7 +49,7 @@ def create_restoration(request):
             invoice_date = data.get('invoice_number'),
 
             created_by=request.user.username,
-            created_on=datetime.now()
+            created_on=datetime.now(tz=indian_time)
         )
         restoration_equipment = Equipment.objects.get(id=restoration.equipment)
         if restoration_equipment.status == "AVAILABLE":
@@ -78,13 +80,13 @@ def restoration_done(request,restoration_id):
     try:
         data = json.loads(request.body)
         restoration = Restoration.objects.get(id=restoration_id)
-        restoration.delivery_date = data.get('delivery_date'),
-        restoration.actual_cost = data.get('actual_cost'),
-        restoration.invoice_number = data.get('invoice_number'),
-        restoration.invoice_date = data.get('invoice_date'),
+        restoration.delivery_date = data.get('delivery_date')
+        restoration.actual_cost = data.get('actual_cost')
+        restoration.invoice_number = data.get('invoice_number')
+        restoration.invoice_date = data.get('invoice_date')
     
-        restoration.updated_by=request.user.username,
-        restoration.updated_on=datetime.now()
+        restoration.updated_by=request.user.username
+        restoration.updated_on=datetime.now(tz=indian_time)
 
         restored_equipment = Equipment.objects.get(id=restoration.equipment)
         if restored_equipment.status == "IN_RESTORATION":
@@ -104,3 +106,40 @@ def restoration_done(request,restoration_id):
         return JsonResponse({'status': 'error', 'message': f'Missing field: {e.args[0]}'}, status=400)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_restoration_list(request, restoration_id=None):
+    try:
+        # Get optional filter parameters from the request
+        restoration_date = request.GET.get('restoration_date')
+        performed_by = request.GET.get('performed_by')
+        invoice_number = request.GET.get('invoice_number')
+        
+        # Build the query using Q objects for optional filtering
+        filters = Q()
+        if restoration_date:
+            filters &= Q(restoration_date=restoration_date)
+        if performed_by:
+            filters &= Q(performed_by=performed_by)
+        if invoice_number:
+            filters &= Q(invoice_number=invoice_number)
+        
+        if restoration_id:
+            filters &= Q(id=restoration_id)
+
+        # Query the Equipment model with the constructed filters
+        restoration_list = Restoration.objects.filter(filters)
+
+        if restoration_list.exists():
+            restoration_data = list(restoration_list.values())
+            return JsonResponse(restoration_data, status=status.HTTP_200_OK, safe=False)
+        else:
+            return JsonResponse({'error': 'No any hardware in restoration for the matching criteria'}, status=status.HTTP_404_NOT_FOUND)
+    except Equipment.DoesNotExist:
+        return JsonResponse({'error': 'Restoration data not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

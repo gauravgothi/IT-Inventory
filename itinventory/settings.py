@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'orders',
     'corsheaders',
     'restorations',
+    'miscellaneous',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -154,7 +155,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Add this configuration to your settings file
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),  # Set access token expiration time
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Set access token expiration time
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),     # Set refresh token expiration time
     'ROTATE_REFRESH_TOKENS': False,                  # Set to True if you want to rotate refresh tokens on each access token request
     'BLACKLIST_AFTER_ROTATION': True,                # Set to True if you want to blacklist refresh tokens after they are rotated
