@@ -68,7 +68,7 @@ def create_equipment(request):
             status=data.get('status'),
             condition = data.get('condition'),
             location=data.get('location'),
-            assigned_to=data.get('assigned_to'),
+            assignment_id=data.get('assignment_id'),
             notes=data.get('notes'),
             
             created_by=request.user.username,
@@ -115,7 +115,7 @@ def create_equipment_list(request):
                     status=data.get('status'),
                     condition = data.get('condition'),
                     location=data.get('location'),
-                    assigned_to=data.get('assigned_to'),
+                    assignment_id=data.get('assignment_id'),
                     notes=data.get('notes'),
                     created_by=request.user.username,
                     created_on=datetime.now(tz=indian_time)
@@ -157,7 +157,7 @@ def update_equipment(request, equipment_id):
         equipment.status = data.get('status',equipment.status)
         equipment.condition = data.get('condition',equipment.condition)
         equipment.location = data.get('location',equipment.location)
-        equipment.assignment_id = data.get('assigned_to',equipment.assignment_id)
+        equipment.assignment_id = data.get('assignment_id',equipment.assignment_id)
         equipment.notes = data.get('status',equipment.notes)
 
         equipment.updated_by = request.user.username

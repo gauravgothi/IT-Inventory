@@ -13,6 +13,8 @@ class User(AbstractUser):
     status = models.CharField(max_length=50, blank=True, null=True)
     remark = models.TextField(blank=True, null=True)
     enabled = models.BooleanField(default=True)
+    employee_number = models.CharField(max_length=11,null=True)
+    office_name = models.CharField(max_length=100,null=True)
     email = models.EmailField(max_length=254) 
     mobile_no = models.CharField(max_length=15, blank=True, null=True)
     created_by = models.CharField(max_length=150)

@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+from django.shortcuts import render
 from rest_framework import status
-import json
 from django.db import IntegrityError,transaction
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from assignees.models import Assignee
+from assignees.models import Employee, Location
 from assignments.models import Assignment
 from assignments.serializers import AssignmentSerializer
 from equipments.models import Equipment
@@ -14,7 +14,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from miscellaneous.models import Condition
-from utility.models import CustomError
+from users.models import User
+from utility.models import CustomError, IssueSlip
 from utility.views import upload_document2
 
 def admin_required(view_func):
@@ -213,3 +214,106 @@ def validate_condition(condition):
 
     if condition not in valid_conditions:
         raise CustomError("Assignment Condition is not valid")
+    
+
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_issue_slip(request, assignment_id):
+    try:
+        assignment = Assignment.objects.get(id = assignment_id)
+        serializer = AssignmentSerializer(assignment, many=False)
+        if assignment:
+            assignment_data = serializer.data
+            issue_slip_object = make_issue_slip(assignment_data)
+            if request.user.is_authenticated:
+                user = User.objects.get(username = request.user.username)
+                issue_slip_object.iss_emp_name = f'{user.first_name} {user.last_name}' 
+                issue_slip_object.iss_emp_num = user.employee_number
+                issue_slip_object.iss_office = user.office_name
+                return render(request, 'inventory_issue_format.html', context=issue_slip_to_dict(issue_slip_object))
+            else:
+                raise CustomError("User is not authenticated.")
+        else:
+            return JsonResponse({'error': 'No assignment found matching the criteria'}, status=status.HTTP_404_NOT_FOUND)
+    except CustomError as e:
+        return JsonResponse({'status' : 'error', 'message' : str(e)}, status=400)
+    except Equipment.DoesNotExist:
+        return JsonResponse({'error': 'Assignment not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_return_slip(request, assignment_id):
+    try:
+        assignment = Assignment.objects.get(id = assignment_id)
+        serializer = AssignmentSerializer(assignment, many=False)
+        if assignment:
+            assignment_data = serializer.data
+            return_slip_object = make_issue_slip(assignment_data)
+            if request.user.is_authenticated:
+                user = User.objects.get(username = request.user.username)
+                return_slip_object.iss_emp_name = f'{user.first_name} {user.last_name}' 
+                return_slip_object.iss_emp_num = user.employee_number
+                return_slip_object.iss_office = user.office_name
+                return render(request, 'inventory_return_format.html', context=issue_slip_to_dict(return_slip_object))
+            else:
+                raise CustomError("User is not authenticated.")
+        else:
+            return JsonResponse({'error': 'No assignment found matching the criteria'}, status=status.HTTP_404_NOT_FOUND)
+    except CustomError as e:
+        return JsonResponse({'status' : 'error', 'message' : str(e)}, status=400)
+    except Equipment.DoesNotExist:
+        return JsonResponse({'error': 'Assignment not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+def validate_condition(condition):
+    valid_conditions = [condition.condition_values for condition in Condition.objects.all()]
+
+    if condition not in valid_conditions:
+        raise CustomError("Assignment Condition is not valid")
+    
+def make_issue_slip(assignment_data):
+    issue_slip_object = IssueSlip()
+    issue_slip_object.set_item_name(f'{assignment_data['equipment']['category']} || {assignment_data['equipment']['sub_category']} || {assignment_data['equipment']['make']} || {assignment_data['equipment']['model']}')
+    issue_slip_object.set_gen_date(datetime.now())
+    issue_slip_object.set_serial_number(assignment_data['equipment']['serial_number'])
+    issue_slip_object.set_remark(assignment_data['notes'])
+    if assignment_data['assigned_type'] == 'location' and assignment_data['assigned_to']:
+        issue_slip_object.set_rec_emp_num('')
+        issue_slip_object.set_rec_emp_name('')
+        location_obj = Location.objects.get(location_code = assignment_data['assigned_to'])
+        issue_slip_object.set_rec_office(f'{location_obj.location_name} || {location_obj.location_code}')
+    elif assignment_data['assigned_type'] == 'employee' and assignment_data['assigned_to']:
+        employee_obj = Employee.objects.get(employee_number = assignment_data.assigned_to)
+        issue_slip_object.set_rec_emp_num(employee_obj.employee_number)
+        issue_slip_object.set_rec_emp_name(employee_obj.employee_name)
+        issue_slip_object.set_rec_office('')
+    else:
+        issue_slip_object.set_rec_emp_num('')
+        issue_slip_object.set_rec_emp_name('')
+        issue_slip_object.set_rec_office('')
+    return issue_slip_object
+    #set issuing user info
+
+
+def issue_slip_to_dict(issue_slip):
+    return {
+        'item_name': issue_slip.item_name,
+        'gen_date': issue_slip.gen_date,
+        'serial_number': issue_slip.serial_number,
+        'remark': issue_slip.remark,
+        'rec_emp_num': issue_slip.rec_emp_num,
+        'rec_emp_name': issue_slip.rec_emp_name,
+        'rec_office': issue_slip.rec_office,
+        'iss_emp_num': issue_slip.iss_emp_num,
+        'iss_emp_name': issue_slip.iss_emp_name,
+        'iss_office': issue_slip.iss_office,
+    }
+

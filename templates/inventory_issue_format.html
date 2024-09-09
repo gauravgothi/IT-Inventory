@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue Slip</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .section-title {
+            background-color: #f2f2f2;
+            text-align: center;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+        }
+        .sub-section {
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Inventory Issue Format -->
+    <!-- <div class="section-title">Inventory Issue Slip</div> -->
+    <table>
+        <tr>
+            <th colspan="4" class="section-title">Inventory Issue Slip</th>
+        </tr>
+        <tr>
+            <td>Item Name</td>
+            <td>{{item_name}}</td>
+            <td>Date</td>
+            <td>{{gen_date}}</td>
+        </tr>
+        <tr>
+            <td>Serial Number</td>
+            <td>{{serial_number}}</td>
+            <td>Remark</td>
+            <td>{{remark}}</td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <th colspan="2" class="sub-section">Received by</th>
+            <th colspan="2" class="sub-section">Issued by</th>
+        </tr>
+        <tr>
+            <td>Employee Name</td>
+            <td>{{rec_emp_name}}</td>
+            <td>Employee Name</td>
+            <td>{{iss_emp_name}}</td>
+        </tr>
+        <tr>
+            <td>Employee Number</td>
+            <td>{{rec_emp_num}}</td>
+            <td>Employee Number</td>
+            <td>{{iss_emp_num}}</td>
+        </tr>
+        <tr>
+            <td>Office Name</td>
+            <td>{{rec_office}}</td>
+            <td>Office Name</td>
+            <td>{{iss_office}}</td>
+        </tr>
+        <tr>
+            <td>Signature</td>
+            <td></td>
+            <td>Signature</td>
+            <td></td>
+        </tr>
+    </table>
+
+</body>
+</html>

@@ -26,4 +26,6 @@ urlpatterns = [
     path('get_assignment_list/',views.get_assignment_list,name='get_assignment_list_by_filter'),
     path('get_assignment_list_with_serializer/<int:assignment_id>/',views.get_assignment_list_with_serializer,name='get_assignment_list_with_serializer_by_id'),
     path('get_assignment_list_with_serializer/',views.get_assignment_list_with_serializer,name='get_assignment_list_with_serializer_by_filter'),
+    path('get_issue_slip/<int:assignment_id>/',views.get_issue_slip,name='get_issue_slip_by_id'),
+    path('get_return_slip/<int:assignment_id>/',views.get_return_slip,name='get_return_slip_by_id'),
 ]
