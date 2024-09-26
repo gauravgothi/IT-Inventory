@@ -15,7 +15,8 @@ class CustomError(Exception):
         super().__init__(self.message)
 
 class IssueSlip:
-    def __init__(self, item_name=None, gen_date=None, serial_number=None, remark=None,rec_emp_num=None,rec_emp_name=None,rec_office=None,iss_emp_num=None,iss_emp_name=None,iss_office=None):
+    def __init__(self, item_name=None, gen_date=None, serial_number=None, remark=None,rec_emp_num=None,rec_emp_name=None,
+                 rec_office=None,iss_emp_num=None,iss_emp_name=None,iss_office=None,auth_person_name=None,auth_person_code=None):
         indian_time = timezone(timedelta(hours=5, minutes=30))
         self.item_name = item_name
         self.gen_date = gen_date
@@ -27,6 +28,8 @@ class IssueSlip:
         self.iss_emp_num = iss_emp_num
         self.iss_emp_name = iss_emp_name
         self.iss_office = iss_office
+        self.auth_person_name = auth_person_name
+        self.auth_person_code = auth_person_code
 
         
 
@@ -59,6 +62,12 @@ class IssueSlip:
 
     def set_iss_office(self, iss_office):
         self.iss_office = iss_office
+
+    def set_auth_person_name(self, auth_person_name):
+        self.auth_person_name = auth_person_name
+
+    def set_auth_person_code(self, auth_person_code):
+        self.auth_person_code = auth_person_code
 
 
 

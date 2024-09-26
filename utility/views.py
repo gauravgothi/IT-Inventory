@@ -8,8 +8,10 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 
+folder_path = "C:/Inventory/"
 
-def get_file_response(file_path):
+def get_file_response(file_name):
+    file_path = os.path.join(folder_path, file_name)
     if not os.path.exists(file_path):
         raise Http404("File does not exist")
     file = open(file_path, 'rb')
@@ -41,7 +43,7 @@ def upload_document2(file,asignee_type,asignee_id):
                 extension = os.path.splitext(file.name)[1]
                 datetime_str = datetime.now().strftime('%Y%m%d%H%M%S')
                 filename = f'{asignee_type}_{asignee_id}_{datetime_str}{extension}'
-                folder_path = "C:/Inventory/"
+                
 
                 # Ensure the folder exists
                 if not os.path.exists(folder_path):
@@ -60,7 +62,7 @@ def upload_document2(file,asignee_type,asignee_id):
                 # document = Document(file=file)
                 # document.save()
 
-                return file_path
+                return filename
             else:
                 return ''
         return ''
@@ -85,10 +87,10 @@ def upload_spreadsheet(request):
 @api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 def download_file(request):
-    file_path = request.GET.get('file_path') 
-    if file_path:
+    file_name = request.GET.get('file_name')
+    if file_name:
         try:
-            return get_file_response(file_path)
+            return get_file_response(file_name)
         except Http404 as e:
             return JsonResponse({'error': str(e)}, status=404)
         except Exception as e:

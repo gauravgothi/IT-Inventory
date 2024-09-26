@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
 from equipments.serializers import EquipmentSerializer
+
+# from equipments.serializers import EquipmentSerializer
 from .models import Assignment
 
 class AssignmentSerializer(serializers.ModelSerializer):

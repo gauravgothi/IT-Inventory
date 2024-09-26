@@ -9,11 +9,12 @@ class Equipment(models.Model):
     id = models.AutoField(primary_key=True)
     category = models.CharField(max_length=100, null=False)
     sub_category = models.CharField(max_length=100, null=False)
-    name = models.CharField(max_length=100, null=False)
+    # name = models.CharField(max_length=100, null=False)
     make = models.CharField(max_length=100, null=False)
     model = models.CharField(max_length=100, null=False)
     serial_number = models.CharField(max_length=50, unique=True, null=False)
 
+    price = models.DecimalField(default= 0.0 ,null=True, decimal_places=2,max_digits=9)
     order = models.ForeignKey('orders.Order',on_delete=models.SET_NULL,null=True,blank=True)
 
     receipt_date = models.DateTimeField(null=True, blank=True)
@@ -31,7 +32,7 @@ class Equipment(models.Model):
 
     status = models.CharField(max_length=20,default="AVAILABLE",choices=get_status_choices)
     condition = models.CharField(max_length=40,default="NEW & WORKING",choices=get_condition_choices)
-    location = models.CharField(max_length=100, blank=True, null=True)
+    # location = models.CharField(max_length=100, blank=True, null=True)
     assignment_id = models.PositiveIntegerField(null=True)
     notes = models.TextField(blank=True)
     

@@ -4,6 +4,7 @@ from django.utils import timezone
 class Order(models.Model):
     # Fields corresponding to the equipment table
     id = models.AutoField(primary_key=True)
+    order_number = models.CharField(max_length=255,blank=False,null=True)
     po_number = models.CharField(max_length=20, null=False,unique=True)
     po_type=models.CharField(max_length=100,null=True)
     project_id = models.CharField(max_length=20, blank=True, null=True)
