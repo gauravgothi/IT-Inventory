@@ -1,5 +1,5 @@
 from django.http import JsonResponse
-from .models import Status, Condition
+from .models import CategorySubcategory, Status, Condition
 
 def get_status_and_condition_values(request):
     try:
@@ -37,5 +37,21 @@ def get_condition_values(request):
             condition_list.append(condition.condition_values)
 
         return JsonResponse({'condition_list': condition_list},status = 200)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+def get_categories(request):
+    try:
+        category_values = CategorySubcategory.get_categories()
+        return JsonResponse({'category_list': category_values},status = 200)
+    
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+def get_subcategories(request,category):
+    try:
+        subcategory_values = CategorySubcategory.get_subcategories(category)
+        return JsonResponse({'subcategory_list': subcategory_values},status = 200)
+    
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
