@@ -31,4 +31,6 @@ urlpatterns = [
     path('get_assignment_history/<int:equipment_id>/',views.get_assignment_history,name='get_assignment_history_by_id'),
     path('get_assignment_history/',views.get_assignment_history,name='get_assignment_history_by_filter'),
     path('retirement_report/',views.get_employee_retirement_info,name='get_employee_retirement_info'),
+    path('get_assignment_overview/',views.get_assignment_overview, name='get_assignment_overview'),
+    
 ]

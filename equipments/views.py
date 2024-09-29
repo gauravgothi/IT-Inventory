@@ -1,12 +1,15 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from functools import wraps
+from django.db.models import Count, Sum
 import json
+from django.db.models import TextField
 from django.db import IntegrityError,transaction
-from django.forms import model_to_dict
+from django.forms import CharField, model_to_dict
 from django.http import JsonResponse
 from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
 from assignments.models import Assignment
+from django.contrib.postgres.search import SearchVector
 from assignments.serializers import AssignmentSerializer
 from equipments.models import Equipment
 from equipments.serializers import EquipmentSerializer
@@ -281,66 +284,154 @@ def get_equipment_list_with_serializer(request, equipment_id=None):
         return JsonResponse({'status': 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
-# class EquipmentPagination(PageNumberPagination):
-#     page_size = 10
-#     page_size_query_param = 'page_size'
-#     max_page_size = 100
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_equipment_list_with_pagination(request, equipment_id=None):
+    try:
+        # Get the search query
+        search_query = request.GET.get('search')
 
-# @api_view(['GET'])
-# @admin_required
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
-# def get_equipment_list_with_serializer(request, equipment_id=None):
-#     try:
-#         # Get the search query
-#         search_query = request.GET.get('search')
+        # Get optional filter parameters from the request
+        serial_number = request.GET.get('serial_number')
+        order = request.GET.get('order')
+        purchase_date = request.GET.get('purchase_date')
 
-#         # Get optional filter parameters from the request
-#         serial_number = request.GET.get('serial_number')
-#         order = request.GET.get('order')
-#         purchase_date = request.GET.get('purchase_date')
+        # Get pagination parameters
+        page_number = int(request.GET.get('page_number', 1))  # Default to page 1
+        page_size = int(request.GET.get('page_size', 50))  # Default page size is 50
 
-#         # Build the query using Q objects for optional filtering
-#         filters = Q()
-#         if serial_number:
-#             filters &= Q(serial_number=serial_number)
-#         if order:
-#             filters &= Q(order=order)
-#         if purchase_date:
-#             filters &= Q(purchase_date=purchase_date)
+        # Build the query using Q objects for optional filtering
+        filters = Q()
+        if serial_number:
+            filters &= Q(serial_number=serial_number)
+        if order:
+            filters &= Q(order=order)
+        if purchase_date:
+            filters &= Q(purchase_date=purchase_date)
 
-#         if equipment_id:
-#             filters &= Q(id=equipment_id)
+        if equipment_id:
+            filters &= Q(id=equipment_id)
 
-#         # Dynamically generate SearchVector based on all CharField or TextField fields in the Equipment model
-#         search_fields = [
-#             field.name for field in Equipment._meta.get_fields() 
-#             if isinstance(field, (CharField, TextField))
-#         ]
-#         search_vector = SearchVector(*search_fields)
+        # Dynamically generate SearchVector based on all CharField or TextField fields in the Equipment model
+        search_fields = [
+            field.name for field in Equipment._meta.get_fields() 
+            if isinstance(field, (CharField, TextField))
+        ]
+        search_vector = SearchVector(*search_fields)
 
-#         # Apply full-text search if search_query is provided
-#         if search_query:
-#             equipment_list = Equipment.objects.annotate(search=search_vector).filter(search=search_query)
-#         else:
-#             equipment_list = Equipment.objects.filter(filters)
+        print("Search fields:", search_fields)
+        print("Search vector:", search_vector)
 
-#         # Pagination
-#         paginator = EquipmentPagination()
-#         result_page = paginator.paginate_queryset(equipment_list, request)
+        # Apply full-text search if search_query is provided
+        if search_query:
+            equipment_list = Equipment.objects.annotate(search=search_vector).filter(search=search_query)
+        else:
+            equipment_list = Equipment.objects.filter(filters)
 
-#         # Serialize the paginated results
-#         serializer = EquipmentSerializer(result_page, many=True)
+        # Get the total count before pagination
+        total_count = equipment_list.count()
+
+        # Apply pagination manually
+        start = (page_number - 1) * page_size
+        end = start + page_size
+        paginated_list = equipment_list[start:end]
+
+        # Serialize the paginated results
+        serializer = EquipmentSerializer(paginated_list, many=True)
         
-#         # Add assignment data if it exists
-#         equipment_data = serializer.data
-#         for data in equipment_data:
-#             data['assignment'] = model_to_dict(Assignment.objects.get(id=data['assignment_id'])) if data.get('assignment_id') else None
+        # Add assignment data if it exists
+        equipment_data = serializer.data
+        for data in equipment_data:
+            data['assignment'] = model_to_dict(Assignment.objects.get(id=data['assignment_id'])) if data.get('assignment_id') else None
         
-#         return paginator.get_paginated_response(equipment_data)
+        # Construct the response with pagination metadata
+        response_data = {
+            'results': equipment_data,
+            'total_count': total_count,
+            'page_number': page_number,
+            'page_size': page_size,
+            'total_pages': (total_count + page_size - 1) // page_size,  # Total pages calculation
+        }
 
-#     except Equipment.DoesNotExist:
-#         return JsonResponse({'error': 'Equipment not found'}, status=status.HTTP_404_NOT_FOUND)
-#     except Exception as e:
-#         return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return JsonResponse(response_data, status=status.HTTP_200_OK)
+
+    except Equipment.DoesNotExist:
+        return JsonResponse({'status' : 'error','message': 'Equipment not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return JsonResponse({'status' : 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])  
+def get_equipment_overview(request):
+    try:
+        # Total number of equipment
+        total_equipment_count = Equipment.objects.count()
+        
+        # Count by category and subcategory
+        category_summary = Equipment.objects.values('category', 'sub_category').annotate(count=Count('id'))
+        
+        # Equipment status summary
+        status_summary = Equipment.objects.values('status','condition').annotate(count=Count('id'))
+        
+        overview = {
+            'total_equipment_count': total_equipment_count,
+            'category_summary': list(category_summary),
+            'status_summary': list(status_summary)
+        }
+        return JsonResponse({'data': overview}, status=200)
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])  
+def get_equipment_condition_summary(request):
+    try:
+        # Equipment condition distribution
+        condition_summary = Equipment.objects.values('condition').annotate(count=Count('id'))
+        
+        summary = {
+            'condition_summary': list(condition_summary),
+        }
+        return JsonResponse({'data': summary}, status=200)
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])  
+def get_purchase_and_warranty_summary(request):
+    try:
+        # Equipment nearing warranty expiration (within 3 months)
+        upcoming_expiration_date = date.today() + timedelta(days=90)
+        upcoming_warranty_expirations = Equipment.objects.filter(warranty_expiration__date__lte=upcoming_expiration_date, warranty_expiration__date__gte=date.today())
+    
+        # Warranty status
+        warranty_status_summary = {
+            'in_warranty': Equipment.objects.filter(warranty_expiration__date__gte=date.today()).count(),
+            'expired_warranty': Equipment.objects.filter(warranty_expiration__date__lt=date.today()).count(),
+            'no_warranty': Equipment.objects.filter(warranty_expiration__isnull=True).count()
+        }
+    
+        # Total purchase value
+        total_purchase_value = Equipment.objects.aggregate(total_value=Sum('price'))['total_value']
+    
+        summary = {
+            'upcoming_warranty_expirations': list(upcoming_warranty_expirations.values('id', 'category', 'model', 'serial_number', 'warranty_expiration')),
+            'warranty_status_summary': warranty_status_summary,
+            # 'total_purchase_value': total_purchase_value
+        }
+        return JsonResponse({'data': summary}, status=200)
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 

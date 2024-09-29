@@ -26,5 +26,9 @@ urlpatterns = [
     path('get_equipment_list/',views.get_equipment_list, name='get_equipment_list_by_filter'),
     path('get_equipment_list_with_serializer/<int:equipment_id>/',views.get_equipment_list_with_serializer, name='get_equipment_list_with_serializer_by_id'),
     path('get_equipment_list_with_serializer/',views.get_equipment_list_with_serializer, name='get_equipment_list_with_serializer_by_filter'),
+    path('get_equipment_list_with_pagination/',views.get_equipment_list_with_pagination, name='gget_equipment_list_with_pagination'),
+    path('get_equipment_overview/',views.get_equipment_overview, name='get_equipment_overview'),
+    path('get_equipment_condition_summary/',views.get_equipment_condition_summary, name='get_equipment_condition_summary'),
+    path('get_purchase_and_warranty_summary/',views.get_purchase_and_warranty_summary, name='get_purchase_and_warranty_summary'), 
 
 ]

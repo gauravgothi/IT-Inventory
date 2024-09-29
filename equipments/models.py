@@ -34,7 +34,7 @@ class Equipment(models.Model):
     condition = models.CharField(max_length=40,default="NEW & WORKING",choices=get_condition_choices)
     # location = models.CharField(max_length=100, blank=True, null=True)
     assignment_id = models.PositiveIntegerField(null=True)
-    notes = models.TextField(blank=True)
+    notes = models.TextField(blank=True,null=True)
     
     created_by = models.CharField(max_length=100, null=False)
     created_on = models.DateTimeField(default=timezone.now)

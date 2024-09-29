@@ -38,4 +38,4 @@ class Assignment(models.Model):
         return cls.objects.filter(equipment_id=equipment_id).order_by('id')
 
     def __str__(self):
-        return f"{self.equipment.serial_number} assigned to {self.assigned_to} on {self.assigned_date}"
+        return f"equipment {self.equipment.serial_number} assigned to {self.assigned_to}, {self.assigned_to_details} on {self.assigned_date}"

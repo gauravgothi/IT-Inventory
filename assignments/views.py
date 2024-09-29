@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+import json
 from django.shortcuts import render
+from django.core.serializers import serialize
+from django.db.models import Count
 from rest_framework import status
 from django.db import IntegrityError,transaction
 from django.http import JsonResponse
@@ -333,12 +336,6 @@ def get_employee_retirement_info(request):
     except Exception as e:
         return JsonResponse({'status': 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-
-def validate_condition(condition):
-    valid_conditions = [condition.condition_values for condition in Condition.objects.all()]
-
-    if condition not in valid_conditions:
-        raise CustomError("Assignment Condition is not valid")
     
 def make_slip(assignment_data,auth_person_name,auth_person_code):
     issue_slip_object = IssueSlip()
@@ -384,58 +381,32 @@ def slip_to_dict(issue_slip):
     }
 
 
-# SELECT 
-#     a.id,
-#     a.assigned_type,
-#     a.assigned_date,
-#     a.letter_for_issue,
-#     a.return_date,
-#     a.assigned_condition,
-#     a.notes,
-#     a.assigned_to,
-#     a.equipment_id,
-#     a.issue_person_code,
-#     a.issue_person_name,
-#     emp.employee_number,
-#     emp.user_person_type,
-#     emp.employee_name,
-#     emp.date_of_birth,
-#     emp.original_date_of_hire,
-#     emp.phone_no,
-#     emp.email_address,
-#     emp.designation,
-#     emp.office,
-#     emp.work_location,
-#     emp.oic_no,
-#     emp.oic_name,
-#     emp.age_in_month
-# FROM 
-#     public.assignments_assignment AS a
-# JOIN 
-#     (SELECT 
-#         employee_number,
-#         user_person_type,
-#         employee_name,
-#         date_of_birth,
-#         original_date_of_hire,
-#         phone_no,
-#         email_address,
-#         designation,
-#         grade,
-#         office,
-#         work_location,
-#         emp_class,
-#         tech_nontech,
-#         oic_no,
-#         oic_name,
-#         (DATE_PART('year', AGE(date_of_birth)) * 12 + DATE_PART('month', AGE(date_of_birth))) AS age_in_month
-#      FROM 
-#         public.assignees_employee
-#      WHERE 
-#         (DATE_PART('year', AGE(date_of_birth)) * 12 + DATE_PART('month', AGE(date_of_birth))) IN (744, 743, 742)
-#     ) AS emp
-# ON 
-#     a.assigned_to = emp.employee_number
-# WHERE 
-#     a.assigned_type = 'employee' AND a.return_date is null;
-
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])      
+def get_assignment_overview(request):
+    try:
+        # Assigned vs available equipment
+        assigned_count = Equipment.objects.filter(assignment_id__isnull=False).count()
+        available_count = Equipment.objects.filter(assignment_id__isnull=True).count()
+        
+        # Top assignees (by assignment count)
+        top_assignees = Assignment.objects.filter(return_date=None).values('assigned_type','assigned_to','assigned_to_details').annotate(count=Count('id')).order_by('-count')[:5]
+        #top_assignee_json = json.dumps(list(top_assignees))
+        
+        # Recent assignments
+        recent_assignments = Assignment.objects.filter(return_date=None).order_by('-created_on')[:10]
+        
+        recent_assignments_strings = [str(assignment) for assignment in recent_assignments]
+        
+        overview = {
+            'assigned_count': assigned_count,
+            'available_count': available_count,
+            'top_assignees': list(top_assignees),
+            'recent_assignments': recent_assignments_strings
+        }
+        return JsonResponse({'data': overview}, status=200,safe=False)
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
