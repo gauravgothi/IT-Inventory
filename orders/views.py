@@ -35,13 +35,14 @@ def create_order(request):
     try:
         data = json.loads(request.body)
         order = Order(
+            order_number = data.get('order_number'),
             po_number = data.get('po_number'),
             po_type = data.get('po_type'),
             project_id = data.get('project_id'),
             project_name = data.get('project_name'),
             supplier_id = data.get('supplier_id'),
             supplier_name = data.get('supplier_name'),
-            purchase_date=data.get('purchaset_date'),
+            purchase_date=data.get('purchase_date'),
             
             created_by=request.user.username,
             created_on=datetime.now(tz=indian_time)
@@ -67,13 +68,13 @@ def update_order(request, order_id):
     try:
         data = json.loads(request.body)
         order = Order.objects.get(id=order_id)
-
-        order.po_type = data.get('po_type'),
-        order.project_id = data.get('project_id'),
-        order.project_name = data.get('project_name'),
-        order.supplier_id = data.get('supplier_id'),
-        order.supplier_name = data.get('supplier_name'),
-        order.purchase_date=data.get('purchaset_date'),
+        order.order_number = data.get('order_number',order.order_number)
+        order.po_type = data.get('po_type',order.po_type)
+        order.project_id = data.get('project_id',order.project_id)
+        order.project_name = data.get('project_name',order.project_name)
+        order.supplier_id = data.get('supplier_id',order.supplier_id)
+        order.supplier_name = data.get('supplier_name',order.supplier_name)
+        order.purchase_date=data.get('purchaset_date',order.purchase_date)
 
         order.updated_by = request.user.username
         order.updated_on = datetime.now(tz=indian_time)

@@ -2,9 +2,9 @@ from datetime import date, datetime, timedelta, timezone
 from functools import wraps
 from django.db.models import Count, Sum
 import json
-from django.db.models import TextField
+from django.db.models import TextField, CharField
 from django.db import IntegrityError,transaction
-from django.forms import CharField, model_to_dict
+from django.forms import model_to_dict
 from django.http import JsonResponse
 from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
@@ -314,21 +314,41 @@ def get_equipment_list_with_pagination(request, equipment_id=None):
         if equipment_id:
             filters &= Q(id=equipment_id)
 
+        # Start with the base query
+        equipment_list = Equipment.objects.all()
+
         # Dynamically generate SearchVector based on all CharField or TextField fields in the Equipment model
+
         search_fields = [
             field.name for field in Equipment._meta.get_fields() 
             if isinstance(field, (CharField, TextField))
         ]
-        search_vector = SearchVector(*search_fields)
 
-        print("Search fields:", search_fields)
-        print("Search vector:", search_vector)
-
-        # Apply full-text search if search_query is provided
+        # Build the search query for partial matches
         if search_query:
-            equipment_list = Equipment.objects.annotate(search=search_vector).filter(search=search_query)
+            query = Q()
+            if search_query:
+                # Full-text search
+                search_vector = SearchVector(*search_fields)
+                query |= Q(search=search_query)
+
+                # Partial matches for each field
+                for field in search_fields:
+                    query |= Q(**{f"{field}__icontains": search_query})
+
+            # Combine filters and query
+            equipment_list = Equipment.objects.annotate(search=search_vector).filter(filters & query)
         else:
-            equipment_list = Equipment.objects.filter(filters)
+            # Apply the filters without searching if no search_query is provided
+            equipment_list = equipment_list.filter(filters)
+
+        # search_vector = SearchVector(*search_fields)
+
+        # # Apply full-text search if search_query is provided
+        # if search_query:
+        #     equipment_list = Equipment.objects.annotate(search=search_vector).filter(search=search_query)
+        # else:
+        #     equipment_list = Equipment.objects.filter(filters)
 
         # Get the total count before pagination
         total_count = equipment_list.count()

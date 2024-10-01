@@ -1,5 +1,12 @@
 from django.http import JsonResponse
+
+from assignments.views import admin_required
+from miscellaneous.serializers import CategorySubcategorySerializer
+from utility.models import CustomError
 from .models import CategorySubcategory, Status, Condition
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 
 def get_status_and_condition_values(request):
     try:
@@ -53,5 +60,61 @@ def get_subcategories(request,category):
         subcategory_values = CategorySubcategory.get_subcategories(category)
         return JsonResponse({'subcategory_list': subcategory_values},status = 200)
     
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@api_view(["POST"])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_category(request):
+    try:
+        category = request.data.get('category')
+        default_subcategory = request.data.get('default_subcategory', 'Not Added')
+        # Check if the category exists (case-insensitive)
+        if CategorySubcategory.objects.filter(category__iexact=category).exists():
+            raise CustomError('Category already exists')
+        
+        serializer = CategorySubcategorySerializer(data={'category': category, 'subcategory': default_subcategory})
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse({'status': 'success', 'message': 'Category added successfully.'}, status=201)
+    except CustomError as e:
+        return JsonResponse({'status' : 'error', 'message' : str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+@api_view(["POST"])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_subcategory(request):
+    try:
+        category = request.data.get('category')
+        subcategory = request.data.get('subcategory')
+        
+         # Check if the category exists (case-insensitive)
+        if not CategorySubcategory.objects.filter(category__iexact=category).exists():
+            return CustomError('Category does not exist.')
+        
+        # Check if the subcategory exists for the given category
+        if CategorySubcategory.objects.filter(category__iexact=category, subcategory__iexact=subcategory).exists():
+            raise CustomError('Sub-Category already exists')
+        
+        # Check if "Not Added" subcategory exists for the given category
+        not_added_instance = CategorySubcategory.objects.filter(category__iexact=category, subcategory='Not Added').first()
+        
+        if not_added_instance:
+            # Update the "Not Added" subcategory
+            not_added_instance.subcategory = subcategory
+            not_added_instance.save()
+            return JsonResponse({'status': 'success', 'message': 'Sub-Category updated successfully.'}, status=200)
+        
+        serializer = CategorySubcategorySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse({'status': 'success', 'message': 'Sub-Category added successfully.'}, status=200)
+    except CustomError as e:
+        return JsonResponse({'status' : 'error', 'message' : str(e)}, status=400)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

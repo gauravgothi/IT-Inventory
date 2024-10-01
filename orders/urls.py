@@ -19,6 +19,6 @@ from . import views
 
 urlpatterns = [
     path('create_order/',views.create_order, name='create_order'),
-    path('update_order/<int:order_id>',views.update_order, name='update_order'),
+    path('update_order/<int:order_id>/',views.update_order, name='update_order'),
     path('get_order_list/',views.get_order_list, name='get_order_list'),
 ]
