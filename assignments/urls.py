@@ -30,6 +30,7 @@ urlpatterns = [
     path('get_return_slip/<int:assignment_id>/',views.get_return_slip,name='get_return_slip_by_id'),
     path('get_assignment_history/<int:equipment_id>/',views.get_assignment_history,name='get_assignment_history_by_id'),
     path('get_assignment_history/',views.get_assignment_history,name='get_assignment_history_by_filter'),
+    path('get_assignment_history_by_assignee/',views.get_assignment_history_by_assignee,name='get_assignment_history_by_assignee'),
     path('retirement_report/',views.get_employee_retirement_info,name='get_employee_retirement_info'),
     path('get_assignment_overview/',views.get_assignment_overview, name='get_assignment_overview'),
     

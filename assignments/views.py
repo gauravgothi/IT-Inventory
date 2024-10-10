@@ -229,9 +229,9 @@ def validate_condition(condition):
     
 
 @api_view(['GET'])
-@admin_required
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+# @admin_required
+# @authentication_classes([JWTAuthentication])
+# @permission_classes([IsAuthenticated])
 def get_issue_slip(request, assignment_id):
     try:
         assignment = Assignment.objects.get(id = assignment_id)
@@ -239,14 +239,14 @@ def get_issue_slip(request, assignment_id):
         if assignment:
             assignment_data = serializer.data
             issue_slip_object = make_slip(assignment_data, assignment.issue_person_name, assignment.issue_person_code)
-            if request.user.is_authenticated:
-                user = User.objects.get(username = request.user.username)
-                issue_slip_object.iss_emp_name = f'{user.first_name} {user.last_name}' 
-                issue_slip_object.iss_emp_num = user.employee_number
-                issue_slip_object.iss_office = user.office_name
-                return render(request, 'inventory_issue_format.html', context=slip_to_dict(issue_slip_object))
-            else:
-                raise CustomError("User is not authenticated.")
+            # if request.user.is_authenticated:
+            user = User.objects.get(username = assignment.created_by)
+            issue_slip_object.iss_emp_name = f'{user.first_name} {user.last_name}' 
+            issue_slip_object.iss_emp_num = user.employee_number
+            issue_slip_object.iss_office = user.office_name
+            return render(request, 'inventory_issue_format.html', context=slip_to_dict(issue_slip_object))
+            # else:
+            #     raise CustomError("User is not authenticated.")
         else:
             return JsonResponse({'status' : 'error', 'message' : 'No assignment found matching the criteria'}, status=status.HTTP_404_NOT_FOUND)
     except CustomError as e:
@@ -257,9 +257,9 @@ def get_issue_slip(request, assignment_id):
         return JsonResponse({'status' : 'error', 'message' : str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
-@admin_required
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+# @admin_required
+# @authentication_classes([JWTAuthentication])
+# @permission_classes([IsAuthenticated])
 def get_return_slip(request, assignment_id):
     try:
         assignment = Assignment.objects.get(id = assignment_id)
@@ -267,14 +267,14 @@ def get_return_slip(request, assignment_id):
         if assignment:
             assignment_data = serializer.data
             return_slip_object = make_slip(assignment_data,assignment.return_person_name,assignment.return_person_code)
-            if request.user.is_authenticated:
-                user = User.objects.get(username = request.user.username)
-                return_slip_object.iss_emp_name = f'{user.first_name} {user.last_name}' 
-                return_slip_object.iss_emp_num = user.employee_number
-                return_slip_object.iss_office = user.office_name
-                return render(request, 'inventory_return_format.html', context=slip_to_dict(return_slip_object))
-            else:
-                raise CustomError("User is not authenticated.")
+            # if request.user.is_authenticated:
+            user = User.objects.get(username = assignment.updated_by)
+            return_slip_object.iss_emp_name = f'{user.first_name} {user.last_name}' 
+            return_slip_object.iss_emp_num = user.employee_number
+            return_slip_object.iss_office = user.office_name
+            return render(request, 'inventory_return_format.html', context=slip_to_dict(return_slip_object))
+            # else:
+            #     raise CustomError("User is not authenticated.")
         else:
             return JsonResponse({'status' : 'error', 'message' : 'No assignment found matching the criteria'}, status=status.HTTP_404_NOT_FOUND)
     except CustomError as e:
@@ -326,6 +326,32 @@ def get_assignment_history(request, equipment_id=None):
 @admin_required
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
+def get_assignment_history_by_assignee(request):
+    try:
+        assigned_type = request.GET.get('assigned_type')
+        assigned_to = request.GET.get('assigned_to')
+
+        if assigned_to is None or assigned_type is None:
+            raise CustomError('Type and Code must be present.')
+        # Query the Equipment model with the constructed filters
+        assignment_history_list = Assignment.objects.filter(assigned_type = assigned_type,assigned_to = assigned_to).order_by('-id')
+        serializer = AssignmentSerializer(assignment_history_list, many=True)
+        # serializer = EquipmentSerializer(equipment_list, many=False)
+        if len(assignment_history_list) == 0:
+            raise CustomError('No Equipment assigned in location or employee.')
+        
+        # assignment_history_json = list(assignment_history_list.values())
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
+
+    except CustomError as e:
+        return JsonResponse({'status' : 'error', 'message' : str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@admin_required
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_employee_retirement_info(request):
     try:
         
@@ -340,7 +366,7 @@ def get_employee_retirement_info(request):
 def make_slip(assignment_data,auth_person_name,auth_person_code):
     issue_slip_object = IssueSlip()
     issue_slip_object.set_item_name(f'{assignment_data['equipment']['category']} || {assignment_data['equipment']['sub_category']} || {assignment_data['equipment']['make']} || {assignment_data['equipment']['model']}')
-    issue_slip_object.set_gen_date(datetime.now())
+    issue_slip_object.set_gen_date(datetime.now().strftime('%d %b %Y %I:%M %p'))
     issue_slip_object.set_serial_number(assignment_data['equipment']['serial_number'])
     issue_slip_object.set_remark(assignment_data['notes'])
     issue_slip_object.set_auth_person_name(auth_person_name=auth_person_name)
@@ -397,14 +423,14 @@ def get_assignment_overview(request):
         
         # Recent assignments
         recent_assignments = Assignment.objects.filter(return_date=None).order_by('-created_on')[:10]
-        
-        recent_assignments_strings = [str(assignment) for assignment in recent_assignments]
+        recent_assignments_serializer = AssignmentSerializer(recent_assignments, many=True)
         
         overview = {
             'assigned_count': assigned_count,
             'available_count': available_count,
             'top_assignees': list(top_assignees),
-            'recent_assignments': recent_assignments_strings
+            # 'recent_assignments': recent_assignments_strings
+            'recent_assignments' : recent_assignments_serializer.data
         }
         return JsonResponse({'data': overview}, status=200,safe=False)
     

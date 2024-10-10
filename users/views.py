@@ -57,6 +57,8 @@ def add_user(request):
         data = json.loads(request.body)
         user = User.objects.create(
             username=data.get('username'),
+            employee_number=data.get('employee_number'),
+            office_name=data.get('office_name'),
             password=data.get('password'),
             role=data.get('role'),
             status=data.get('status'),
@@ -84,12 +86,12 @@ def add_user(request):
 @admin_required
 @permission_classes([IsAuthenticated])
 @authentication_classes([JWTAuthentication])
-def update_user(request, user_id):
+def update_user(request, username):
     try:
         data = json.loads(request.body)
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(username=username)
 
-        user.username = data.get('username', user.username)
+        # user.username = data.get('username', user.username)
         user.role = data.get('role', user.role)
         user.status = data.get('status', user.status)
         user.remark = data.get('remark', user.remark)

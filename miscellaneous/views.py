@@ -62,6 +62,17 @@ def get_subcategories(request,category):
     
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+def get_categories_subcategories(request):
+    try:
+        categories_subcategories_list = CategorySubcategory.objects.all()
+
+        if categories_subcategories_list.exists():
+            categories_subcategories_data  = list(categories_subcategories_list.values())
+            return JsonResponse(categories_subcategories_data,status = 200,safe=False)
+    
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 @api_view(["POST"])
 @admin_required

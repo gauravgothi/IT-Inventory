@@ -121,8 +121,8 @@ def get_order_list(request, order_id=None):
             order_list_data = list(order_list.values())
             return JsonResponse(order_list_data, status=status.HTTP_200_OK, safe=False)
         else:
-            return JsonResponse({'error': 'No order found matching the criteria'}, status=status.HTTP_404_NOT_FOUND)
+            return JsonResponse({'status': 'error', 'message': 'No order found matching the criteria'}, status=status.HTTP_404_NOT_FOUND)
     except Order.DoesNotExist:
-        return JsonResponse({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+        return JsonResponse({'status': 'error', 'message': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

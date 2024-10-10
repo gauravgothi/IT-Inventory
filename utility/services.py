@@ -13,13 +13,13 @@ def fetch_employee_retirement_info():
            eq.category, eq.sub_category, eq.make, eq.model, eq.serial_number,
            -- Calculate months until retirement
            CASE 
-               WHEN AGE(emp.date_of_birth + INTERVAL '60 years') >= INTERVAL '0 years' THEN 0
-               ELSE (DATE_PART('year', AGE(emp.date_of_birth + INTERVAL '60 years')) * 12 
-                     + DATE_PART('month', AGE(emp.date_of_birth + INTERVAL '60 years')))
+               WHEN AGE(emp.date_of_birth + INTERVAL '62 years') >= INTERVAL '0 years' THEN 0
+               ELSE (DATE_PART('year', AGE(emp.date_of_birth + INTERVAL '62 years')) * 12 
+                     + DATE_PART('month', AGE(emp.date_of_birth + INTERVAL '62 years')))
            END AS retire_in_month,
            -- Check if already retired
            CASE 
-               WHEN AGE(emp.date_of_birth + INTERVAL '60 years') >= INTERVAL '0 years' THEN TRUE
+               WHEN AGE(emp.date_of_birth + INTERVAL '62 years') >= INTERVAL '0 years' THEN TRUE
                ELSE FALSE
            END AS is_retired
     FROM public.assignments_assignment AS a
@@ -29,15 +29,15 @@ def fetch_employee_retirement_info():
                work_location, oic_no, oic_name,
                -- Calculate retirement in months (for those retiring within 1-3 months)
                CASE 
-                   WHEN AGE(date_of_birth + INTERVAL '60 years') >= INTERVAL '0 years' THEN 0
-                   ELSE (DATE_PART('year', AGE(date_of_birth + INTERVAL '60 years')) * 12 
-                         + DATE_PART('month', AGE(date_of_birth + INTERVAL '60 years')))
+                   WHEN AGE(date_of_birth + INTERVAL '62 years') >= INTERVAL '0 years' THEN 0
+                   ELSE (DATE_PART('year', AGE(date_of_birth + INTERVAL '62 years')) * 12 
+                         + DATE_PART('month', AGE(date_of_birth + INTERVAL '62 years')))
                END AS retire_in_month
         FROM public.assignees_employee
         WHERE 
         -- Include those retiring within 1-3 months or already retired
-        (DATE_PART('year', AGE(date_of_birth + INTERVAL '60 years')) * 12 
-        + DATE_PART('month', AGE(date_of_birth + INTERVAL '60 years'))) IN (0, 1, 2, 3)
+        (DATE_PART('year', AGE(date_of_birth + INTERVAL '62 years')) * 12 
+        + DATE_PART('month', AGE(date_of_birth + INTERVAL '62 years'))) IN (0, 1, 2, 3)
     ) AS emp
     ON a.assigned_to = emp.employee_number
     -- Join with Equipment table

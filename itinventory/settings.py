@@ -75,7 +75,7 @@ MIDDLEWARE = [
 CORS_ALLOW_ALL_ORIGINS = True
 
 # CORS_ALLOWED_ORIGINS = [
-#     "http://10.98.4.135:4200", # If you are running a local React or Angular app
+#     "http://35.207.244.94:4200", # If you are running a local React or Angular app
 # ]
 
 CORS_ALLOW_METHODS = [
@@ -130,6 +130,7 @@ DATABASES = {
         'PASSWORD': '123456',
         'HOST': 'localhost',
         'PORT': '5432',
+
     }
 }
 

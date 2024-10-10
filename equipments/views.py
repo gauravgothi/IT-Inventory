@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from functools import wraps
 from django.db.models import Count, Sum
@@ -223,7 +224,7 @@ def get_equipment_list(request, equipment_id=None):
         # Build the query using Q objects for optional filtering
         filters = Q()
         if serial_number:
-            filters &= Q(serial_number=serial_number)
+            filters &= Q(serial_number__iexact=serial_number)
         if order:
             filters &= Q(order=order)
         if purchase_date:
@@ -259,7 +260,7 @@ def get_equipment_list_with_serializer(request, equipment_id=None):
         # Build the query using Q objects for optional filtering
         filters = Q()
         if serial_number:
-            filters &= Q(serial_number=serial_number)
+            filters &= Q(serial_number__iexact=serial_number)
         if order:
             filters &= Q(order=order)
         if purchase_date:
@@ -305,7 +306,7 @@ def get_equipment_list_with_pagination(request, equipment_id=None):
         # Build the query using Q objects for optional filtering
         filters = Q()
         if serial_number:
-            filters &= Q(serial_number=serial_number)
+            filters &= Q(serial_number__iexact=serial_number)
         if order:
             filters &= Q(order=order)
         if purchase_date:
@@ -392,21 +393,102 @@ def get_equipment_overview(request):
         total_equipment_count = Equipment.objects.count()
         
         # Count by category and subcategory
-        category_summary = Equipment.objects.values('category', 'sub_category').annotate(count=Count('id'))
-        
+        category_summary = Equipment.objects.values('category', 'sub_category','status').annotate(count=Count('id'))
+        category_summary_fromatted = category_status_merge(category_summary=category_summary)
+
+        # Count available by category and subcategory and condition
+        available_summary = Equipment.objects.filter(status='AVAILABLE').values('category', 'sub_category','condition').annotate(count=Count('id'))
+        available_summary_fromatted = category_condition_merge(available_summary=available_summary)
+
         # Equipment status summary
         status_summary = Equipment.objects.values('status','condition').annotate(count=Count('id'))
         
         overview = {
             'total_equipment_count': total_equipment_count,
-            'category_summary': list(category_summary),
-            'status_summary': list(status_summary)
+            'category_summary': category_summary_fromatted,
+            'status_summary': list(status_summary),
+            'available_summary' : available_summary_fromatted
         }
         return JsonResponse({'data': overview}, status=200)
     
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
+def category_status_merge(category_summary):
+    # Create a structure to hold the merged results
+    merged_summary = defaultdict(lambda: {"statuses": []})
+
+    # Process the category_summary
+    for item in category_summary:
+        category = item['category']
+        sub_category = item['sub_category']
+        status = item['status']
+        count = item['count']
+
+        # Create a key based on both category and sub_category
+        key = (category, sub_category)
+
+        # If the key does not exist, initialize the sub_category
+        if key not in merged_summary:
+            merged_summary[key]["sub_category"] = sub_category
+        
+        # Check if the status already exists in the list of statuses
+        existing_status = next((s for s in merged_summary[key]["statuses"] if s['status'] == status), None)
+        if existing_status:
+            existing_status['count'] += count  # Merge counts
+        else:
+            merged_summary[key]["statuses"].append({"status": status, "count": count})
+
+    # Convert back to a list
+    formatted_result = [
+        {
+            "category": category,
+            "sub_category": details["sub_category"],
+            "statuses": details["statuses"]
+        }
+        for (category, sub_category), details in merged_summary.items()
+    ]
+    
+    return formatted_result
+
+def category_condition_merge(available_summary):
+    # Create a structure to hold the merged results
+    merged_summary = defaultdict(lambda: {"conditions": []})
+
+    # Process the category_summary
+    for item in available_summary:
+        category = item['category']
+        sub_category = item['sub_category']
+        condition = item['condition']
+        count = item['count']
+
+        # Create a key based on both category and sub_category
+        key = (category, sub_category)
+
+        # If the key does not exist, initialize the sub_category
+        if key not in merged_summary:
+            merged_summary[key]["sub_category"] = sub_category
+        
+        # Check if the status already exists in the list of statuses
+        existing_status = next((s for s in merged_summary[key]["conditions"] if s['condition'] == condition), None)
+        if existing_status:
+            existing_status['count'] += count  # Merge counts
+        else:
+            merged_summary[key]["conditions"].append({"condition": condition, "count": count})
+
+    # Convert back to a list
+    formatted_result = [
+        {
+            "category": category,
+            "sub_category": details["sub_category"],
+            "conditions": details["conditions"]
+        }
+        for (category, sub_category), details in merged_summary.items()
+    ]
+    
+    return formatted_result
+
+
 @api_view(['GET'])
 @admin_required
 @authentication_classes([JWTAuthentication])
